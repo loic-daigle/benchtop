@@ -1,0 +1,111 @@
+.project {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.project-name {
+  border: 0;
+  background: transparent;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 650;
+  max-width: 32vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-name:hover {
+  background: var(--surface-hover);
+}
+
+.project-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.sidebar {
+  width: 300px;
+  min-width: 200px;
+  max-width: 60vw;
+  resize: horizontal; /* drag the bottom-right corner to resize */
+  overflow: auto;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: 8px 6px 24px;
+  flex-shrink: 0;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.content > .notice {
+  margin: 12px 16px 0;
+}
+
+/* ---------- Tree ---------- */
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 28px;
+  padding-right: 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+}
+.tree-row:hover {
+  background: var(--surface-hover);
+}
+.tree-row.selected {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.tree-row.heavy {
+  opacity: 0.5;
+}
+.tree-row.root {
+  padding-left: 10px;
+  font-weight: 650;
+  margin-bottom: 2px;
+}
+
+.tree-chevron {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  border-radius: 4px;
+  transition: transform 0.12s ease;
+}
+.tree-chevron.open {
+  transform: rotate(90deg);
+}
+.tree-chevron:not(.placeholder):hover {
+  background: var(--border);
+}
+
+.tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tree-note {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}

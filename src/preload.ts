@@ -1,0 +1,71 @@
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron';
+import type { BenchtopApi, BridgeInfo, EasyEdaExported, FsChange, ProjectSummary } from './shared/types';
+
+function subscribe<T>(channel: string, cb: (payload: T) => void): () => void {
+  const listener = (_e: IpcRendererEvent, payload: T) => cb(payload);
+  ipcRenderer.on(channel, listener);
+  return () => ipcRenderer.removeListener(channel, listener);
+}
+
+const api: BenchtopApi = {
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
+  chooseRoot: () => ipcRenderer.invoke('settings:chooseRoot'),
+  listProjects: () => ipcRenderer.invoke('projects:list'),
+  rescan: () => ipcRenderer.invoke('projects:rescan'),
+  onProjectsUpdated: (cb) => subscribe<ProjectSummary[]>('projects:updated', cb),
+  onFsChanged: (cb) => subscribe<FsChange>('fs:changed', cb),
+  listDir: (dirPath) => ipcRenderer.invoke('fs:listDir', dirPath),
+  readText: (filePath) => ipcRenderer.invoke('fs:readText', filePath),
+  saveMeta: (projectPath, meta) => ipcRenderer.invoke('meta:save', projectPath, meta),
+  readNotes: (projectPath) => ipcRenderer.invoke('notes:read', projectPath),
+  saveNotes: (projectPath, content) => ipcRenderer.invoke('notes:save', projectPath, content),
+  quickFind: (query) => ipcRenderer.invoke('find:quick', query),
+  search: (query, opts) => ipcRenderer.invoke('find:search', query, opts),
+  openPath: (targetPath) => ipcRenderer.invoke('shell:openPath', targetPath),
+  showInFolder: (targetPath) => ipcRenderer.invoke('shell:showInFolder', targetPath),
+  openInEditor: (targetPath) => ipcRenderer.invoke('shell:openInEditor', targetPath),
+  openTerminal: (dirPath) => ipcRenderer.invoke('shell:openTerminal', dirPath),
+  openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
+  createProject: (input) => ipcRenderer.invoke('structure:create', input),
+  planStructure: (projectPath) => ipcRenderer.invoke('structure:plan', projectPath),
+  applyStructure: (projectPath, moves) => ipcRenderer.invoke('structure:apply', projectPath, moves),
+  canUndoStructure: (projectPath) => ipcRenderer.invoke('structure:canUndo', projectPath),
+  undoStructure: (projectPath) => ipcRenderer.invoke('structure:undo', projectPath),
+  setGroup: (folderPath, isGroup) => ipcRenderer.invoke('structure:setGroup', folderPath, isGroup),
+  easyedaStatus: (refresh) => ipcRenderer.invoke('easyeda:status', refresh),
+  easyedaSuggest: () => ipcRenderer.invoke('easyeda:suggest'),
+  easyedaLink: (links) => ipcRenderer.invoke('easyeda:link', links),
+  fabFiles: (projectPath) => ipcRenderer.invoke('easyeda:fabFiles', projectPath),
+  copyEasyEdaBackup: (projectPath, name) => ipcRenderer.invoke('easyeda:copyBackup', projectPath, name),
+  openEasyEda: (projectPath) => ipcRenderer.invoke('easyeda:open', projectPath),
+  easyedaBridgeInfo: () => ipcRenderer.invoke('easyeda:bridgeInfo'),
+  easyedaNewPairingCode: () => ipcRenderer.invoke('easyeda:newPairingCode'),
+  easyedaRestartBridge: () => ipcRenderer.invoke('easyeda:restartBridge'),
+  easyedaShowExtension: () => ipcRenderer.invoke('easyeda:showExtension'),
+  onEasyEdaBridge: (cb) => subscribe<BridgeInfo>('easyeda:bridge', cb),
+  onEasyEdaExported: (cb) => subscribe<EasyEdaExported>('easyeda:exported', cb),
+  onNavigate: (cb) => subscribe<{ projectPath: string }>('app:navigate', cb),
+  copyText: (text) => ipcRenderer.invoke('clipboard:write', text),
+  renderGerber: (zipPath) => ipcRenderer.invoke('gerber:render', zipPath),
+  zipInfo: (zipPath) => ipcRenderer.invoke('zip:info', zipPath),
+  releases: (projectPath) => ipcRenderer.invoke('releases:list', projectPath),
+  createRelease: (projectPath, input) => ipcRenderer.invoke('releases:create', projectPath, input),
+  saveRelease: (projectPath, relDir, info) => ipcRenderer.invoke('releases:save', projectPath, relDir, info),
+  snapshotFirmware: (projectPath, relDir) => ipcRenderer.invoke('releases:snapshot', projectPath, relDir),
+  readBinary: (filePath) => ipcRenderer.invoke('fs:readBinary', filePath),
+  appAsset: (name) => ipcRenderer.invoke('app:asset', name),
+  githubStatus: () => ipcRenderer.invoke('github:status'),
+  githubSetToken: (token) => ipcRenderer.invoke('github:setToken', token),
+  githubUseCli: () => ipcRenderer.invoke('github:useCli'),
+  githubSignOut: () => ipcRenderer.invoke('github:signOut'),
+  publishPrecheck: (projectPath) => ipcRenderer.invoke('publish:precheck', projectPath),
+  publish: (projectPath, opts) => ipcRenderer.invoke('publish:run', projectPath, opts),
+  onPublishProgress: (cb) => subscribe<string>('publish:progress', cb),
+  gitChanges: (projectPath) => ipcRenderer.invoke('git:changes', projectPath),
+  commitAndPush: (projectPath, message) => ipcRenderer.invoke('git:commitPush', projectPath, message),
+  pull: (projectPath) => ipcRenderer.invoke('git:pull', projectPath),
+  platform: process.platform,
+};
+
+contextBridge.exposeInMainWorld('benchtop', api);

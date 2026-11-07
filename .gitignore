@@ -1,0 +1,8 @@
+node_modules/
+.vite/
+out/
+.update/
+*.log
+.DS_Store
+Thumbs.db
+easyeda-extension/dist/

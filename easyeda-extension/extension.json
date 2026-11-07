@@ -1,0 +1,69 @@
+{
+	"name": "benchtop-easyeda",
+	"uuid": "d3bf55775fd84b5f8d59bb8f40d0f673",
+	"displayName": "Benchtop",
+	"description": "Export Gerbers, BOM, pick & place, schematic PDF, STEP and the project file straight into your Benchtop project folder.",
+	"version": "1.0.0",
+	"publisher": "Loic Daigle",
+	"engines": {
+		"eda": "^3.0.0"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "extension-store",
+		"url": ""
+	},
+	"categories": "Other",
+	"keywords": [
+		"Benchtop",
+		"Export",
+		"Manufacturing"
+	],
+	"images": {
+		"logo": "./images/logo.png"
+	},
+	"homepage": "",
+	"bugs": "",
+	"activationEvents": {},
+	"entry": "./dist/index",
+	"dependentExtensions": {},
+	"headerMenus": {
+		"home": [
+			{
+				"id": "benchtop-home",
+				"title": "Benchtop",
+				"menuItems": [
+					{ "id": "export", "title": "Export to Benchtop…", "registerFn": "exportToBenchtop" },
+					{ "id": "open", "title": "Open in Benchtop", "registerFn": "openInBenchtop" },
+					{ "id": "link", "title": "Link to a Benchtop project…", "registerFn": "linkToBenchtop" },
+					{ "id": "connect", "title": "Connect to Benchtop…", "registerFn": "connectToBenchtop" },
+					{ "id": "about", "title": "About", "registerFn": "about" }
+				]
+			}
+		],
+		"sch": [
+			{
+				"id": "benchtop-sch",
+				"title": "Benchtop",
+				"menuItems": [
+					{ "id": "export", "title": "Export to Benchtop…", "registerFn": "exportToBenchtop" },
+					{ "id": "open", "title": "Open in Benchtop", "registerFn": "openInBenchtop" },
+					{ "id": "link", "title": "Link to a Benchtop project…", "registerFn": "linkToBenchtop" },
+					{ "id": "connect", "title": "Connect to Benchtop…", "registerFn": "connectToBenchtop" }
+				]
+			}
+		],
+		"pcb": [
+			{
+				"id": "benchtop-pcb",
+				"title": "Benchtop",
+				"menuItems": [
+					{ "id": "export", "title": "Export to Benchtop…", "registerFn": "exportToBenchtop" },
+					{ "id": "open", "title": "Open in Benchtop", "registerFn": "openInBenchtop" },
+					{ "id": "link", "title": "Link to a Benchtop project…", "registerFn": "linkToBenchtop" },
+					{ "id": "connect", "title": "Connect to Benchtop…", "registerFn": "connectToBenchtop" }
+				]
+			}
+		]
+	}
+}
