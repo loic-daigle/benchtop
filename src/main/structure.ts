@@ -128,7 +128,7 @@ export async function createProject(input: NewProjectInput): Promise<string> {
 
 /** Folder names that clearly mean one standard folder. */
 const DIR_ALIASES: Array<[RegExp, string]> = [
-  [/^(code|codes|firmware|arduino|sketch(es)?|programme?s?|esp32|esp8266|attiny|stm32)$/i, 'firmware'],
+  [/^(code|codes|source[ _-]?code|firmware|software|logiciels?|arduino|sketch(es)?|programme?s?|esp32|esp8266|attiny|stm32)$/i, 'firmware'],
   [/^(pcbs?|electronics?|schematics?|gerbers?|easyeda|kicad|circuit)$/i, 'pcb'],
   [/^(3d|3d[ _-]?files|3d[ _-]?models?|pi[eè]ces?[ _-]?3d|cad|stl|stls|step|enclosure|case|boitier|bo[iî]tier|mechanical|meca|print(s|ed)?)$/i, 'mechanical'],
   [/^(images?|imgs?|photos?|pictures?|renders?|images[_ -]\w+|media|screenshots?)$/i, 'docs/images'],
@@ -254,6 +254,31 @@ export async function planStructure(projectPath: string): Promise<StructurePlan>
     list.push({ from: path.join(projectPath, name), to: path.join(projectPath, ...rel.split('/')), isDir, reason });
   };
 
+  /**
+   * Move everything inside `srcRel` into `targetRel` (which exists), for folders that mean the same
+   * thing ("Software" into firmware/, "3D Files" into mechanical/). A folder inside that is itself a
+   * synonym ("Software/code") is merged too, so nothing ends up as firmware/Software/code/….
+   * Never overwrites: a name that already exists in the target is left where it is.
+   */
+  const merge = async (srcRel: string, targetRel: string, why: string, readRel = srcRel): Promise<void> => {
+    const children = (await readDir(path.join(projectPath, readRel))).filter((c) => !/^(desktop\.ini|thumbs\.db|\.ds_store)$/i.test(c.name));
+    const before = dirMoves.length;
+    for (const c of children) {
+      const childRel = `${srcRel}/${c.name}`;
+      const childAlias = c.isDirectory() ? DIR_ALIASES.find(([re]) => re.test(c.name))?.[1] : undefined;
+      if (childAlias === targetRel || (c.isDirectory() && c.name.toLowerCase() === targetRel.toLowerCase())) {
+        await merge(childRel, targetRel, why, `${readRel}/${c.name}`);
+        continue;
+      }
+      await add(dirMoves, childRel, c.isDirectory(), `${targetRel}/${c.name}`, why, c.name);
+    }
+    // When the folder is emptied, remove it (only if really empty, checked when applying).
+    if (dirMoves.length > before) {
+      const last = dirMoves[dirMoves.length - 1];
+      last.cleanup = [...(last.cleanup ?? []), path.join(projectPath, ...srcRel.split('/'))];
+    }
+  };
+
   // Folders first: renames like "3D Files" -> "mechanical".
   for (const e of entries.filter((x) => x.isDirectory())) {
     const lower = e.name.toLowerCase();
@@ -267,6 +292,12 @@ export async function planStructure(projectPath: string): Promise<StructurePlan>
           isDir: true,
           reason: `rename to lowercase “${lower}”`,
         });
+      }
+      // A synonym nested inside it (firmware/Software, mechanical/3D Files): merge it up one level.
+      for (const c of await readDir(path.join(projectPath, e.name))) {
+        if (c.isDirectory() && DIR_ALIASES.find(([re]) => re.test(c.name))?.[1] === lower && c.name.toLowerCase() !== lower) {
+          await merge(`${e.name}/${c.name}`, e.name === lower ? lower : e.name, `“${e.name}/${c.name}” is the same as ${lower}/: its content moves up`);
+        }
       }
       continue;
     }
@@ -284,15 +315,26 @@ export async function planStructure(projectPath: string): Promise<StructurePlan>
       if (!(await isTaken(alias))) {
         // "3D Files" -> "mechanical", "Images" -> "docs/images"
         await add(dirMoves, e.name, true, alias, `“${e.name}” becomes ${alias}/`, alias);
-      } else {
-        // Target already exists: keep the folder, nested inside it.
+        // …and a synonym inside it ("Software/code") is flattened in the same go.
+        for (const c of await readDir(full)) {
+          if (c.isDirectory() && DIR_ALIASES.find(([re]) => re.test(c.name))?.[1] === alias) {
+            await merge(`${alias}/${c.name}`, alias, `“${e.name}/${c.name}” is the same as ${alias}/: its content moves up`, `${e.name}/${c.name}`);
+          }
+        }
+      } else if (alias === 'docs/images' || alias === 'releases') {
+        // Several image / export folders can sit side by side.
         await add(dirMoves, e.name, true, alias, `“${e.name}” goes inside ${alias}/`);
+      } else {
+        // Same meaning as a folder that already exists ("Software" and firmware/): merge into it.
+        await merge(e.name, alias, `from “${e.name}/”, which is the same as ${alias}/`);
       }
       continue;
     }
     const dominant = await dominantCategory(full);
     if (dominant) {
-      await add(dirMoves, e.name, true, dominant, `mostly ${dominant.replace('docs/images', 'image').replace('docs', 'document')} files`);
+      const label = `mostly ${dominant.replace('docs/images', 'image').replace('docs', 'document')} files`;
+      if (!(await isTaken(dominant))) await add(dirMoves, e.name, true, dominant, `“${e.name}” becomes ${dominant}/ (${label})`, dominant);
+      else await add(dirMoves, e.name, true, dominant, label);
     } else {
       plan.kept.push({ path: full, reason: 'mixed content — left as is' });
     }
@@ -383,6 +425,17 @@ export async function applyPlan(projectPath: string, moves: MoveItem[], logDir: 
       result.done.push(item);
     } catch (err) {
       result.failed.push({ item, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  // Folders emptied by a merge ("Software/" after its content went to firmware/): remove them,
+  // deepest first, and only if they are really empty. Nothing with files in it is ever deleted.
+  const cleanup = result.done.flatMap((m) => m.cleanup ?? []).sort((a, b) => b.length - a.length);
+  for (const dir of cleanup) {
+    if (!inside(projectPath, dir)) continue;
+    try {
+      await fs.rmdir(dir); // fails (and keeps the folder) if anything is left, even desktop.ini
+    } catch {
+      /* in use or not empty: leave it */
     }
   }
   if (result.done.length) {

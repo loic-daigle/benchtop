@@ -129,6 +129,11 @@ function createStage(host: HTMLDivElement, onChange: () => void): Stage {
   key.position.set(-0.5, 1, 0);
   key.target.position.set(0, 0, -1);
   camera.add(key, key.target);
+  // Soft fill from the other side, so dark parts (black enclosures) still show their shape.
+  const fill = new THREE.DirectionalLight(0xffffff, 0.7);
+  fill.position.set(1, -0.5, 0.3);
+  fill.target.position.set(0, 0, -1);
+  camera.add(fill, fill.target);
 
   const root = new THREE.Group();
   scene.add(root);

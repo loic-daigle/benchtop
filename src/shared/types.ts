@@ -233,6 +233,8 @@ export interface MoveItem {
   to: string;
   isDir: boolean;
   reason: string;
+  /** Folders to remove after this move if they ended up empty (merged "Software/" etc.). */
+  cleanup?: string[];
 }
 
 export interface StructurePlan {

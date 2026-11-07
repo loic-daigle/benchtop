@@ -1,28 +1,71 @@
 # Benchtop
 
-A desktop app to browse all your maker projects — code, PCB, 3D and docs — in one place.
+A Windows desktop app for makers: all your hardware and firmware projects in one place, with the code, the PCB, the 3D
+models and the docs side by side. It works on a plain folder of projects, so nothing needs to be imported.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dashboard-dark.webp">
+    <img src="docs/screenshots/dashboard-light.webp" alt="Benchtop dashboard: project cards with photos and board renders, status, tags, Git state and contents" width="900">
+  </picture>
+</p>
+
+## See your boards and parts without opening a CAD tool
+
+| Gerber viewer | 3D viewer (STEP, STL, 3MF, OBJ) |
+|:---:|:---:|
+| <img src="docs/screenshots/board.webp" alt="Top and bottom of a board drawn from its Gerber zip" width="440"> | <img src="docs/screenshots/model.webp" alt="STEP enclosure in the 3D viewer" width="440"> |
+| Any Gerber zip (EasyEDA, KiCad, JLC plugin…): top and bottom, zoom and pan, board size and layer count. | STEP files are read with OpenCascade, colours included. Rotate, zoom, wireframe, size in mm. |
+
+| README, Markdown and PDF | Code | BOM and CSV |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/readme.webp" alt="README preview with images" width="290"> | <img src="docs/screenshots/code.webp" alt="C++ file with syntax colours" width="290"> | <img src="docs/screenshots/bom.webp" alt="BOM shown as a table" width="290"> |
+
+## Track every board you order
+
+<img src="docs/screenshots/releases.webp" alt="Releases tab: one card per board order with its files, notes and firmware commit" width="900">
+
+**Releases** keeps one folder per order (`releases/<date>/`) with the Gerber, BOM and pick & place that were sent, the board
+revision, order number, notes, and the firmware commit that goes with it. Benchtop tells you which release your current
+firmware matches ("3 commits after rev B").
+
+## Everything about a project on one page
+
+<img src="docs/screenshots/overview.webp" alt="Overview tab: status, description, tags, links, EasyEDA panel, Git panel and contents" width="900">
 
 ## Features
 
-- **Dashboard** with a card per project: cover image, description, status, tags, Git state and what it contains (Code / PCB / 3D). Filter by status, tag or content, sort by date / name / status.
-- **Pinned** projects on top and a **Recently opened** row.
-- **Groups**: a plain folder holding several projects (like `Software/`) shows each project separately.
-- **Instant startup** from a saved scan, then a background rescan. A **folder watcher** updates cards, the file tree and previews when files change.
-- **Project page** with three tabs:
-  - **Files**: file tree + preview (images, Markdown, code with syntax colours, CSV / BOM tables including EasyEDA's UTF-16 exports). Back / forward with `Alt+←/→` or the mouse side buttons. Open folders are remembered per project.
-  - **Overview**: edit status, description, tags, links (GitHub, EasyEDA, YouTube, MakerWorld, JLC…) and the cover image. Git panel: branch, uncommitted changes, ahead/behind, last commit, link to the repo.
-  - **Notes**: `NOTES.md` with to-do checkboxes you can tick, autosaved.
-- **Ctrl+K**: jump to any project or file. **Ctrl+Shift+F**: search inside files across all projects (or just the open one); click a result to open the file at that line.
-- One-click **Open in VS Code**, **terminal here**, **Explorer**.
+- **Dashboard**: a card per project with a cover image, description, status, tags, Git state and what it contains
+  (Code / PCB / 3D). Filter by status, tag or content; pins and recently opened on top. Folders like `Software/` that hold
+  several projects show each one.
+- **Project page**: Files (tree + previews), Overview, Releases and Notes (`NOTES.md` with tickable to-dos).
+- **Previews**: images, Markdown with HTML (GitHub-style), PDF, code with syntax colours, CSV / BOM tables, Gerber zips,
+  STEP / IGES / STL / 3MF / OBJ, and the file list of any other zip.
+- **Ctrl+K** to jump to any project or file, **Ctrl+Shift+F** to search inside files across all projects.
+- **EasyEDA Pro**: link each project to its EasyEDA project, get warned when the board changed after your last Gerber export,
+  copy EasyEDA's automatic backups into the project. A companion **EasyEDA extension** exports Gerber, BOM, pick & place,
+  schematic PDF, STEP and the project file straight into the right folder.
+- **GitHub**: publish a project as a new repo in one click (checks for Wi-Fi passwords and API keys first, uses Git LFS for
+  CAD files), then commit & push or pull from the app.
+- **New project** with a standard folder layout, and **Make consistent** to tidy an existing one (moves only, with undo).
+- Open in **VS Code**, **terminal** or **Explorer** in one click. Follows the Windows light/dark setting. Updates itself.
+
+| Ctrl+K | EasyEDA |
+|:---:|:---:|
+| <img src="docs/screenshots/palette.webp" alt="Command palette searching for matter" width="440"> | <img src="docs/screenshots/easyeda.webp" alt="EasyEDA window: extension status and linked projects" width="440"> |
 
 ### What Benchtop writes
 
-Only two files, and only when you edit them in the app:
+Your projects stay plain folders. Benchtop only writes when you ask it to:
 
-- `project.yaml` (project info: status, tags, links, cover). Comments and extra keys you add by hand are kept.
-- `NOTES.md` (project notes).
+- `project.yaml`: project info (status, description, tags, links, cover, linked EasyEDA projects). Comments and extra keys
+  you add by hand are kept. Kept out of git (local only).
+- `NOTES.md`: project notes.
+- `releases/<name>/release.yaml`: release info (local only, never pushed), and the files you choose to copy into a release.
+- Files you export from EasyEDA, folders and moves you confirm in **New project** / **Make consistent**, and git commits you
+  make from the app.
 
-Everything else is read-only. App settings (pins, recent, cache) live in Benchtop's own app-data folder.
+App settings (pins, recent, cache, GitHub sign-in) live in Benchtop's own app-data folder.
 
 ```yaml
 # project.yaml example
@@ -82,25 +125,33 @@ Windows SmartScreen asks once: *More info → Run anyway*. Updates after that in
 |---|---|
 | `npm start` | Run the app with live reload |
 | `npm run typecheck` | TypeScript check |
-| `npm test` | Unit tests for the folder scanner |
+| `npm test` | Unit tests (scanner, structure, EasyEDA, bridge, Gerber, releases) |
 | `npm run make` | Build the installer (`out\make\squirrel.windows\x64\Benchtop-Setup.exe`) |
 | `npm run publish` | Build and upload a GitHub release (auto-update) |
 | `npm run build:easyeda` | Build the EasyEDA extension (`easyeda-extension\dist\benchtop-easyeda.eext`) |
 
-Stack: Electron + Electron Forge (Vite plugin), React 19 + TypeScript, plain CSS, highlight.js, react-markdown.
+Stack: Electron + Electron Forge (Vite plugin), React 19 + TypeScript, plain CSS, highlight.js, react-markdown,
+three.js, [occt-import-js](https://github.com/kovacsv/occt-import-js) (OpenCascade, LGPL-2.1) for STEP, and
+[tracespace](https://github.com/tracespace/tracespace) pcb-stackup for Gerbers.
 
 ```
 src/
-  main/        Electron main process — scanner, store (cache + watcher), project.yaml, git, search, settings
+  main/        Electron main process — scanner, store (cache + watcher), project.yaml, git, search, settings,
+               Gerber rendering, releases, GitHub publishing, the EasyEDA bridge
   preload.ts   The small API the UI is allowed to call
   shared/      Types and file-category rules used by both sides
-  renderer/    React UI (components/, styles/ — plain CSS, lib/)
+  renderer/    React UI (components/, styles/ — plain CSS, lib/, workers/ for STEP)
+easyeda-extension/  The EasyEDA Pro extension (TypeScript, bundled to a .eext)
 ```
 
 Security: the UI has no Node access (`contextIsolation`, `sandbox`); every file request is checked to be inside the projects folder.
 
-## Roadmap
+## Ideas
 
-- STEP / STL 3D viewer, Gerber viewer, PDF preview
-- "New project" button with a standard folder template
-- Publish to GitHub
+- Firmware build / upload / serial monitor (PlatformIO, ESP-IDF)
+- Check a BOM against a parts inventory
+- Gerber thumbnails on project cards
+
+## License
+
+MIT, see [LICENSE](LICENSE).

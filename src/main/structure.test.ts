@@ -205,3 +205,49 @@ test('new-project .gitignore ignores project.yaml', async () => {
   assert.match(gi, /^project\.yaml$/m);
   assert.match(gi, /^\*\*\/\[Rr\]eleases\/\*\/release\.yaml$/m);
 });
+
+test('"Software" means firmware: renamed, merged, wrappers flattened', async () => {
+  const logDir = tmp();
+  // Fresh project: Software/code/Test_Camera/Test_Camera.ino
+  const a = tmp();
+  mkdirSync(path.join(a, 'Software', 'code', 'Test_Camera'), { recursive: true });
+  writeFileSync(path.join(a, 'Software', 'code', 'Test_Camera', 'Test_Camera.ino'), 'void setup(){}');
+  let plan = await planStructure(a);
+  const sw = plan.moves.find((m) => m.from === path.join(a, 'Software'));
+  assert.equal(sw?.to, path.join(a, 'firmware'), 'Software is renamed, not nested');
+  const resA = await applyPlan(a, plan.moves, tmp());
+  assert.equal(resA.failed.length, 0);
+  assert.ok(existsSync(path.join(a, 'firmware', 'Test_Camera', 'Test_Camera.ino')), 'and code/ is flattened');
+  assert.equal(existsSync(path.join(a, 'firmware', 'code')), false);
+
+  // Already moved by the old rule: firmware/Software/code/Test_Camera -> firmware/Test_Camera
+  const b = tmp();
+  mkdirSync(path.join(b, 'firmware', 'Software', 'code', 'Test_Camera'), { recursive: true });
+  writeFileSync(path.join(b, 'firmware', 'Software', 'code', 'Test_Camera', 'Test_Camera.ino'), 'x');
+  plan = await planStructure(b);
+  assert.deepEqual(
+    plan.moves.map((m) => [path.relative(b, m.from), path.relative(b, m.to)].map((x) => x.split(path.sep).join('/'))),
+    [['firmware/Software/code/Test_Camera', 'firmware/Test_Camera']],
+  );
+  const res = await applyPlan(b, plan.moves, logDir);
+  assert.equal(res.failed.length, 0);
+  assert.ok(existsSync(path.join(b, 'firmware', 'Test_Camera', 'Test_Camera.ino')));
+  assert.equal(existsSync(path.join(b, 'firmware', 'Software')), false, 'emptied wrappers are removed');
+  await undoPlan(b, logDir);
+  assert.ok(existsSync(path.join(b, 'firmware', 'Software', 'code', 'Test_Camera', 'Test_Camera.ino')), 'undo puts it back');
+
+  // Both exist: Software/ merges into firmware/, without overwriting; a non-empty leftover stays.
+  const c = tmp();
+  mkdirSync(path.join(c, 'firmware', 'main'), { recursive: true });
+  mkdirSync(path.join(c, 'Software', 'main'), { recursive: true });
+  mkdirSync(path.join(c, 'Software', 'tools'), { recursive: true });
+  writeFileSync(path.join(c, 'Software', 'tools', 'flash.py'), 'x');
+  plan = await planStructure(c);
+  assert.deepEqual(
+    plan.moves.map((m) => path.relative(c, m.to).split(path.sep).join('/')),
+    ['firmware/tools'],
+  );
+  assert.ok(plan.kept.some((k) => /firmware\/main\/ already exists/.test(k.reason)));
+  await applyPlan(c, plan.moves, tmp());
+  assert.ok(existsSync(path.join(c, 'Software', 'main')), 'what could not move stays, and so does its folder');
+});
